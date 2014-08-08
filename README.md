@@ -27,8 +27,8 @@ You can check photos, how it is plugged in at [this page](https://plus.google.co
 Installation
 ------------
 There are two files:
-DHT22.py - the module implementing communication with the sensor
-main.py  - a sample file how to use the module (to use it you will need LCD panel installed)
+* DHT22.py - the module implementing communication with the sensor
+* main.py  - a sample file how to use the module (to use it you will need LCD panel installed)
 
 The simples installation way is to follow these steps (Linux):
 
