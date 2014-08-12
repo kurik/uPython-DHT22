@@ -21,6 +21,7 @@ def init(timer_id = 2, nc_pin = 'Y3', gnd_pin = 'Y4', vcc_pin = 'Y1', data_pin =
     global data
     global micros
     global timer
+    # Leave the pin unconnected
     if nc_pin is not None:
         nc = Pin(nc_pin)
         nc.init(Pin.OUT_OD)
@@ -56,6 +57,7 @@ def start_signal():
     while micros.counter() < 25000:
         pass
     data.high()
+    micros.counter(0)
     while micros.counter() < 20:
         pass
 
@@ -105,6 +107,6 @@ def measure():
     pyb.delay(5)
     extint = ExtInt(data, ExtInt.IRQ_FALLING, Pin.PULL_UP, None)
     if index != (FALL_EDGES -1):
-        raise ValueError('Data transfer failed ' + str(index))
+        raise ValueError('Data transfer failed: ' + str(index))
     return process_data()
 
