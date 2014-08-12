@@ -54,3 +54,6 @@ docs/_build/
 
 # VIM
 .*.swp
+
+# uPython
+boot.py
