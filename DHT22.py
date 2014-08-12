@@ -2,6 +2,8 @@ import pyb
 from pyb import Pin
 from pyb import ExtInt
 
+# We need to use global properties here as any allocation of a memory (aka declaration of a variable)
+# during the read cycle causes non-acceptable delay and we are loosing data than
 nc = None
 gnd = None
 vcc = None
@@ -9,10 +11,19 @@ data = None
 timer = None
 micros = None
 
-FALL_EDGES = 41 # we have 41 falling edges during data receive
+FALL_EDGES = 42 # we have 42 falling edges during data receive
 
 times = list(range(FALL_EDGES))
 index = 0
+
+# The interrupt handler
+def edge(line):
+    global index
+    global times
+    global micros
+    times[index] = micros.counter()
+    if index < (FALL_EDGES - 1): # Avoid overflow of the buffer in case of any noise on the line
+        index += 1
 
 def init(timer_id = 2, nc_pin = 'Y3', gnd_pin = 'Y4', vcc_pin = 'Y1', data_pin = 'Y2'):
     global nc
@@ -40,18 +51,24 @@ def init(timer_id = 2, nc_pin = 'Y3', gnd_pin = 'Y4', vcc_pin = 'Y1', data_pin =
     data = Pin(data_pin)
     # Save the ID of the timer we are going to use
     timer = timer_id
+    # setup the 1uS timer
+    micros = pyb.Timer(timer, prescaler=83, period=0x3fffffff) # 1MHz ~ 1uS
+    # Prepare interrupt handler
+    ExtInt(data, ExtInt.IRQ_FALLING, Pin.PULL_UP, None)
+    ExtInt(data, ExtInt.IRQ_FALLING, Pin.PULL_UP, edge)
 
 # Start signal
-def start_signal():
+def do_measurement():
     global nc
     global gnd
     global vcc
     global data
     global micros
     global timer
-    # setup the 1uS timer
-    micros = pyb.Timer(timer, prescaler=83, period=0x3fffffff) # 1MHz ~ 1uS
-    data.init(data.OUT_PP)
+    global index
+    global extint
+    # Send the START signal
+    data.init(Pin.OUT_PP)
     data.low()
     micros.counter(0)
     while micros.counter() < 25000:
@@ -60,31 +77,23 @@ def start_signal():
     micros.counter(0)
     while micros.counter() < 20:
         pass
-
-# The interrupt handler
-def edge(line):
-    global index
-    global times
-    global micros
-    times[index] = micros.counter()
-    if index < (FALL_EDGES - 1):
-        index += 1
+    # Activate reading on the data pin
+    index = 0
+    data.init(Pin.IN, Pin.PULL_UP)
+    # Till 5mS the measurement must be over
+    pyb.delay(5)
 
 # Parse the data read from the sensor
 def process_data():
     global times
-    # Check the length of init response
-    #if (times[0] < 150) or (times[0] > 200):
-    #    print('Initial response from sensor failed:', times[0], 'uS')
-    #    raise ValueError('Initial response from sensor failed: %s uS' % times)
-    i = 1
+    i = 2 # We ignore the first two falling edges as it is a respomse on the start signal
     result_i = 0
     result = list([0, 0, 0, 0, 0])
     while i < FALL_EDGES:
         result[result_i] <<= 1
         if times[i] - times[i - 1] > 100:
             result[result_i] += 1
-        if (i % 8) == 0:
+        if (i % 8) == 1:
             result_i += 1
         i += 1
     [int_rh, dec_rh, int_t, dec_t, csum] = result
@@ -98,15 +107,8 @@ def process_data():
     return (humidity, temperature)
 
 def measure():
-    global index
-    global micros
-    start_signal()
-    index = 0
-    micros.counter(0)
-    extint = ExtInt(data, ExtInt.IRQ_FALLING, Pin.PULL_UP, edge)
-    pyb.delay(5)
-    extint = ExtInt(data, ExtInt.IRQ_FALLING, Pin.PULL_UP, None)
+    do_measurement()
     if index != (FALL_EDGES -1):
-        raise ValueError('Data transfer failed: ' + str(index))
+        raise ValueError('Data transfer failed: %s falling edges only' % str(index))
     return process_data()
 
