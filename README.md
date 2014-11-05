@@ -30,16 +30,17 @@ There are two files:
 * DHT22.py - the module implementing communication with the sensor
 * main.py  - a sample file how to use the module (to use it you will need LCD panel installed)
 
-The simples installation way is to follow these steps (Linux):
+The simplest installation way is to follow these steps (Linux):
 
 1. Connect your microPython board to your PC using a USB cable
 2. Mount the device pointing to the board (/dev/sdb1 in my case)
   ```
+  mkdir ~/tmp
   sudo mount /dev/sdb1 ~/tmp
   ```
 3. copy DHT22.py and main.py files to the board
   ```
-  sudo DHT22.py main.py ~/tmp
+  sudo cp DHT22.py main.py ~/tmp
   ```
 4. Unmount the device
   ```
