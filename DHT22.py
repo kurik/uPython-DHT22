@@ -66,7 +66,6 @@ def do_measurement():
     global micros
     global timer
     global index
-    global extint
     # Send the START signal
     data.init(Pin.OUT_PP)
     data.low()
